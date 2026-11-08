@@ -1,0 +1,26 @@
+// Prisma schema for the Budiman HRMS starter app.
+// Only the User table exists so far. You add the leave request table in
+// Session 2, from the data design you write in docs/specs/.
+// Roles are stored as a String because the SQLite connector does not support
+// Prisma `enum`. The valid values are in src/lib/constants.ts.
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id               Int      @id @default(autoincrement())
+  email            String   @unique
+  name             String
+  passwordHash     String
+  role             String // EMPLOYEE | SUPERVISOR | HR | ADMIN
+  identificationNo String
+  designation      String
+  division         String
+  createdAt        DateTime @default(now())
+}
