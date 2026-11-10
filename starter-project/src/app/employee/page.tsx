@@ -26,10 +26,10 @@ export const metadata = { title: "My leave requests · Budiman HRMS" };
 export default async function EmployeePage({
   searchParams,
 }: {
-  searchParams: Promise<{ sent?: string }>;
+  searchParams: Promise<{ sent?: string; joined?: string }>;
 }) {
   const user = await requireRole("EMPLOYEE");
-  const { sent } = await searchParams;
+  const { sent, joined } = await searchParams;
 
   const requests = await prisma.leaveRequest.findMany({
     where: { employeeId: user.id },
@@ -107,6 +107,15 @@ export default async function EmployeePage({
         open={sent === "1"}
         title="Sent to HR"
         message="Your request is now waiting for HR."
+        dismissHref="/employee"
+      />
+
+      {/* Self sign-up lands here signed in (design §12b); this page shows the
+          success pop-up because the sign-up screen disappears on redirect. */}
+      <PageSuccessModal
+        open={joined === "1"}
+        title="Welcome to Budiman HRMS"
+        message="Your account is ready. Press New leave request to apply for leave."
         dismissHref="/employee"
       />
     </>

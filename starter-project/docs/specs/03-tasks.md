@@ -195,3 +195,19 @@ has to work before anything else.
   requests).
 - **Check:** Every AC-10…AC-23 box ticked, every old AC still ticked;
   `npm run lint` and `npm run build` pass.
+
+## Task 16 – Self sign-up *(Core, added after the first build)*
+
+- **Goal:** `/signup` (design §12b), linked from the login page: full name,
+  work email, password (min. 8 characters) and a division dropdown of the
+  divisions that already exist. `signupAction` validates server-side
+  (required fields, 8-char password, unique email — duplicate shows
+  "An account with this email already exists."), hashes the password with
+  bcrypt, **pins the role to EMPLOYEE on the server**, creates the user,
+  sets the session cookie and sends the new person to `/employee`. A
+  confirm box precedes creating, a success message follows.
+- **Files:** `src/app/signup/page.tsx`, `src/app/actions.ts`
+  (`signupAction`), login page (Sign up link). Reuse `Field`, `Button`,
+  `ConfirmDialog`, `SuccessModal`.
+- **Check:** AC-24, AC-25, AC-26; `npm run lint` and `npm run build` pass;
+  README mentions the sign-up page.

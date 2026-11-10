@@ -66,8 +66,10 @@ Run `npm run db:seed` first to start from clean data.
 
 These are **out of scope** for the login:
 
-- Signing up, or resetting a forgotten password.
-- Adding, editing or deleting user accounts (only the demo data creates users).
+- Resetting a forgotten password.
+- Editing or deleting existing user accounts, or signing up with any role
+  other than Employee (sign-up creates **your own Employee account** only —
+  supervisors, HR and Admin exist only in the demo data).
 - The Leave Request module itself – that is what you build in Session 2.
 
 ---
@@ -152,6 +154,11 @@ stories for this module.
 - **U12. Admin overview** *(Core)*. As an Admin, I can see every leave
   request in the system with its status and remarks, so that HR records are
   visible. I change nothing.
+- **U13. Self sign-up** *(Core, added later)*. As a new Budiman employee, I
+  can create my own **Employee** account from the login page — full name,
+  work email, password (at least **8 characters**) and a **division from the
+  list** — so that I can start using the system without waiting for someone
+  else to create my account.
 
 ## 9. Acceptance checklist
 
@@ -179,6 +186,9 @@ Saturday and Sunday are excluded; there is no public-holiday calendar.
 | [ ] | AC-21 | A rejected request can be edited and resubmitted. | As `employee-2`, open the *Rejected* request from AC-16, **Edit** the dates, **Submit** → confirmation → success. Status is *Waiting for Supervisor* again, and it reappears in `supervisor-2`'s *Needs your action*. |
 | [ ] | AC-22 | The admin sees everything and changes nothing. | Log in as `admin` → every request appears with its status, days and remarks. There are **no** Sign / Reject / Send / Approve buttons anywhere on the admin pages. |
 | [ ] | AC-23 | A user cannot do another role's action. | As `hr-1`, a request still *Waiting for Supervisor* is not in your action list and offers no buttons; as a Supervisor, no Approve (HR) option exists; employees see no decision buttons on their own requests. |
+| [ ] | AC-24 | A visitor can sign up and is signed in straight away. | From the **Sign up** link on `/login`: full name, a fresh email `@budiman.com`, password of 8+ characters, a division from the dropdown → **Create account** → confirmation box → success message → you are on `/employee`, header shows you as **Employee**. Log out, log back in with the same email and password — it works. |
+| [ ] | AC-25 | A duplicate email is refused. | Sign up again with an email that already exists (e.g. `employee-1@budiman.com`) → the error "An account with this email already exists." shows and no account is created. |
+| [ ] | AC-26 | The form enforces the rules, and the server enforces them again. | Password `short` (5 characters) → red error, nothing created; missing required fields are blocked by the browser. The page offers **no way to choose a role** — whatever is posted, the new account is an **Employee** (check the form's HTML: no role field). |
 
 ## 10. Not included (for now)
 
@@ -190,4 +200,5 @@ Out of scope for this module — noted so nobody assumes them:
 - Email or in-app notifications — roles check their home pages.
 - A public-holiday calendar — employees schedule around holidays themselves.
 - Archiving or deleting finished requests — they stay in history (see § 7).
-- Printing or exporting requests; creating new users.
+- Printing or exporting requests; user administration beyond self sign-up
+  (sign-up only creates your own Employee account — see U13 and § 5).

@@ -80,7 +80,8 @@ another role sends you back to your own home page.
 | Route | Who | What it shows |
 |-------|-----|---------------|
 | `/` | anyone | Sends you to your home page, or to `/login`. |
-| `/login` | anyone | Email and password form. A logged-in user is sent to their home page. |
+| `/login` | anyone | Email and password form, with a **Sign up** link to `/signup`. A logged-in user is sent to their home page. |
+| `/signup` | logged-out visitor | The sign-up form (§12b). A logged-in user is sent to their home page. |
 | `/employee` | Employee | A page with only a short hint ("This page is empty. Continue here with your own project…") until Session 2. |
 | `/supervisor` | Supervisor | A page with only a short hint ("This page is empty. Continue here with your own project…") until Session 2. |
 | `/hr` | HR | A page with only a short hint ("This page is empty. Continue here with your own project…") until Session 2. |
@@ -107,8 +108,9 @@ red above the form.
 | `src/lib/constants.ts` | Roles, divisions, designations, time zone, date helpers. |
 | `src/lib/auth.ts` | Login cookie, `getCurrentUser()`, `requireRole()`, `roleHome()`. |
 | `src/lib/db.ts` | The single database connection. |
-| `src/app/actions.ts` | Server actions: `loginAction`, `logoutAction`. |
+| `src/app/actions.ts` | Server actions: `loginAction`, `logoutAction`, `signupAction`. |
 | `src/app/login/` | The login page. |
+| `src/app/signup/` | The sign-up page (§12b). |
 | `src/app/<role>/` | One folder per role's screens (pages with only a hint for now). |
 | `src/components/` | Screen pieces: app frame (top bar), login form and log out button. |
 | `src/components/ui/` | Small building blocks used everywhere: Button, Card, PageHeader, EmptyState, Avatar, Icons, form field styles, dialogs, and the overlay page scrollbar. Use these when you build the module. |
@@ -138,6 +140,9 @@ build can be tested with more than one person per role.
 - Every server action checks again on the server – hiding a button is not enough.
 - The login cookie is signed with `AUTH_SECRET` from `.env`, so it can't be faked.
 - Passwords are stored only as a hash.
+- Sign-up creates **Employees only**: the role is set by the server, never
+  read from the form, and the password (min. 8 characters) is validated
+  server-side as well as in the browser.
 
 ## 8. Commands
 
@@ -277,6 +282,27 @@ One form used by `/employee/new` and by the edit screen, built from
 - **Reason** – optional text area.
 - **Submit** – confirmation box → save → success message → back to
   `/employee`.
+
+## 12b. The sign-up form (`/signup`)
+
+Built from `src/components/ui/Field`, like the login and apply forms:
+
+- **Full name** – text, required.
+- **Work email** – email, required; must be unique. A duplicate shows the
+  error "An account with this email already exists." above the form.
+- **Password** – password field, required, **minimum 8 characters** (browser
+  `minLength` + server check). Stored as a bcrypt hash like the demo users.
+- **Division** – dropdown of the divisions that already exist in the system
+  (from the current users). The signer never types a division, so supervisor
+  matching keeps working.
+- **Create account** – confirmation box → `signupAction`. The account is
+  created **with role Employee** (no role field exists on the form, and the
+  action never trusts one); `designation` and `identificationNo` are not
+  asked for and are stored empty. The action sets the login cookie and
+  redirects to `/employee?joined=1` — because the sign-up screen disappears,
+  the success pop-up is the **page-level** one (design §11): the employee
+  page opens its `SuccessModal` from the flag. The page links back to
+  `/login`.
 
 ## 13. Table columns per screen
 

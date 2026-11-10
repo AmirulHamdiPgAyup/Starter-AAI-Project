@@ -20,6 +20,7 @@ days are counted as **working days** (Saturday and Sunday excluded).
 | Screen | Route | Role |
 |--------|-------|------|
 | Log in | `/login` | everyone |
+| Sign up — creates an Employee account (name, work email, 8+ char password, division from the list) | `/signup` | logged-out visitor |
 | My leave requests — *Needs your action* + *History*, plus **New leave request** | `/employee` | Employee |
 | Request view (and **Edit & resubmit** when *Rejected*) | `/employee/requests/[id]` | Employee |
 | Supervisor queue — **Sign** / **Reject** (remark required) + history | `/supervisor` | Supervisor |
@@ -34,7 +35,7 @@ buttons a screen shows are never the only gate.
 ## What's already here
 
 - **Login and logout** with a company email and password, and a signed
-  session cookie.
+  session cookie — plus **self sign-up** for new Employee accounts.
 - **Four roles** – Employee, Supervisor, HR and Admin – each with its own home
   page. Nobody can open another role's pages.
 - **The Leave Request module**: apply, track, supervisor signing, the shared
