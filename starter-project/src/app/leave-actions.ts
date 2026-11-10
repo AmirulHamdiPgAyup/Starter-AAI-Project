@@ -186,3 +186,63 @@ export async function rejectByHr(
   revalidatePath("/employee");
   redirect("/hr?rejected=1");
 }
+
+// Edit & resubmit (Task 13): the owner fixes a rejected request. They may
+// change type, dates, supervisor and reason; the working-days count is
+// recomputed here and every remark and deciding officer from the previous
+// round is cleared (design §10.5–10.6). Only a REJECTED request qualifies —
+// loadActionableRequest re-checks ownership and status.
+export async function resubmitLeave(
+  _prev: ActionResult,
+  formData: FormData,
+): Promise<ActionResult> {
+  const user = await requireRole("EMPLOYEE");
+  const target = await loadActionableRequest(user.id, user.role, formData, "resubmit");
+  if (!target) return { error: "This request cannot be resubmitted right now." };
+
+  const fields = checkLeaveFields({
+    leaveType: String(formData.get("leaveType") ?? ""),
+    startDate: String(formData.get("startDate") ?? ""),
+    endDate: String(formData.get("endDate") ?? ""),
+  });
+  if (fields.errors.length > 0) return { error: fields.errors.join(" ") };
+
+  // Same division rule as the apply form (design §10.3) — the dropdown is
+  // convenience, the server is the check.
+  const supervisor = await prisma.user.findUnique({
+    where: { id: Number(formData.get("supervisorId")) },
+  });
+  if (
+    !supervisor ||
+    supervisor.role !== "SUPERVISOR" ||
+    supervisor.division !== user.division
+  ) {
+    return { error: "Choose a supervisor from your own division." };
+  }
+
+  const reason = String(formData.get("reason") ?? "").trim();
+
+  await prisma.leaveRequest.update({
+    where: { id: target.id },
+    data: {
+      leaveType: fields.leaveType!,
+      startDate: fields.startDate!,
+      endDate: fields.endDate!,
+      workingDays: fields.workingDays!,
+      supervisorId: supervisor.id,
+      reason: reason.length > 0 ? reason : null,
+      status: "WAITING_SUPERVISOR",
+      supervisorRemark: null,
+      hrRemark: null,
+      hrDecidedById: null,
+    },
+  });
+
+  // A form action: the screen does not disappear, so the form's own success
+  // pop-up is used (design §11) — which means no revalidatePath here at all.
+  // Revalidating /employee would refresh the shared employee segment and
+  // re-run the edit screen, whose "not Rejected anymore" guard would then
+  // redirect away and unmount the pop-up before anyone sees it. Nothing goes
+  // stale: every screen re-reads the database on each request.
+  return { ok: true, message: "Your request went back to your supervisor." };
+}

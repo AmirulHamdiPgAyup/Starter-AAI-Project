@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useActionState } from "react";
+import Link from "next/link";
 import {
   approveLeave,
   rejectByHr,
@@ -9,7 +10,7 @@ import {
   sendToHr,
   signLeave,
 } from "@/app/leave-actions";
-import { Button } from "../ui/Button";
+import { Button, buttonClasses } from "../ui/Button";
 import { ConfirmDialog } from "../ui/ConfirmDialog";
 import { ErrorMessage } from "../ui/Field";
 import { DecisionDialog } from "./DecisionDialog";
@@ -60,10 +61,14 @@ export function RequestActions({
           </Button>
         ) : null}
         {canResubmit ? (
-          // Placeholder until Task 13 builds the edit & resubmit screen.
-          <Button variant="secondary" disabled title="Coming in the next task">
+          // Opens the request view, where the prefilled form can be reopened
+          // (Task 13). resubmitLeave re-checks owner and status on save.
+          <Link
+            href={`/employee/requests/${requestId}`}
+            className={buttonClasses("secondary")}
+          >
             Edit &amp; resubmit
-          </Button>
+          </Link>
         ) : null}
         {canSign ? (
           <Button variant="success" disabled={pending} onClick={() => setDecision("sign")}>

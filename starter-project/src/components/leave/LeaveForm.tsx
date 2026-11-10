@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import { useActionState } from "react";
 import { useRouter } from "next/navigation";
-import { createLeaveRequest } from "@/app/leave-actions";
+import { createLeaveRequest, resubmitLeave } from "@/app/leave-actions";
 import { LEAVE_TYPE_LABELS, type LeaveType } from "@/lib/constants";
 import { countWorkingDays, parseDateInput, leaveDaysLabel } from "@/lib/leave";
 import { Button } from "../ui/Button";
@@ -11,17 +11,33 @@ import { ConfirmDialog } from "../ui/ConfirmDialog";
 import { SuccessModal } from "../ui/SuccessModal";
 import { ErrorMessage, HelpText, Label, fieldClass } from "../ui/Field";
 
-// The apply form (design §12), used by /employee/new. Submit asks for
-// confirmation first, then shows a success message (brief rule 6).
+// What the edit & resubmit screen passes to prefill the form (Task 13).
+export interface LeaveFormRequest {
+  id: number;
+  leaveType: string;
+  startDate: string; // YYYY-MM-DD, ready for a date input
+  endDate: string;
+  supervisorId: number;
+  reason: string | null;
+}
+
+// The apply form (design §12), used by /employee/new — and, when a request
+// is passed in, by the edit & resubmit screen with the fields prefilled.
+// Submit asks for confirmation first, then shows a success message.
 export function LeaveForm({
   supervisors,
+  request,
 }: {
   supervisors: { id: number; name: string }[];
+  request?: LeaveFormRequest;
 }) {
   const router = useRouter();
-  const [state, formAction, pending] = useActionState(createLeaveRequest, {});
-  const [start, setStart] = useState("");
-  const [end, setEnd] = useState("");
+  const [state, formAction, pending] = useActionState(
+    request ? resubmitLeave : createLeaveRequest,
+    {},
+  );
+  const [start, setStart] = useState(request?.startDate ?? "");
+  const [end, setEnd] = useState(request?.endDate ?? "");
   const [confirming, setConfirming] = useState(false);
   const [toSend, setToSend] = useState<FormData | null>(null);
   const [, startTransition] = useTransition();
@@ -51,11 +67,19 @@ export function LeaveForm({
         setConfirming(true);
       }}
     >
+      {request ? <input type="hidden" name="id" value={request.id} /> : null}
+
       <ErrorMessage message={state.error} />
 
       <div>
         <Label htmlFor="leaveType">Leave type</Label>
-        <select id="leaveType" name="leaveType" required className={fieldClass()}>
+        <select
+          id="leaveType"
+          name="leaveType"
+          required
+          className={fieldClass()}
+          defaultValue={request?.leaveType}
+        >
           {(Object.keys(LEAVE_TYPE_LABELS) as LeaveType[]).map((t) => (
             <option key={t} value={t}>
               {LEAVE_TYPE_LABELS[t]}
@@ -107,7 +131,13 @@ export function LeaveForm({
 
       <div>
         <Label htmlFor="supervisorId">Supervisor</Label>
-        <select id="supervisorId" name="supervisorId" required className={fieldClass()}>
+        <select
+          id="supervisorId"
+          name="supervisorId"
+          required
+          className={fieldClass()}
+          defaultValue={request ? String(request.supervisorId) : undefined}
+        >
           {supervisors.map((s) => (
             <option key={s.id} value={s.id}>
               {s.name}
@@ -119,7 +149,13 @@ export function LeaveForm({
 
       <div>
         <Label htmlFor="reason">Reason (optional)</Label>
-        <textarea id="reason" name="reason" rows={3} className={fieldClass()} />
+        <textarea
+          id="reason"
+          name="reason"
+          rows={3}
+          className={fieldClass()}
+          defaultValue={request?.reason ?? undefined}
+        />
       </div>
 
       <div className="flex items-center gap-3">
@@ -133,8 +169,12 @@ export function LeaveForm({
 
       <ConfirmDialog
         open={confirming}
-        title="Submit leave request?"
-        message="It will go to your supervisor for signing."
+        title={request ? "Resubmit leave request?" : "Submit leave request?"}
+        message={
+          request
+            ? "It will go back to your supervisor for signing."
+            : "It will go to your supervisor for signing."
+        }
         confirmLabel="Submit"
         onConfirm={() => {
           setConfirming(false);
@@ -145,7 +185,7 @@ export function LeaveForm({
 
       <SuccessModal
         open={Boolean(state.ok)}
-        title="Leave request submitted"
+        title={request ? "Leave request resubmitted" : "Leave request submitted"}
         message={state.message}
         actionLabel="Back to my requests"
         onAction={() => router.push("/employee")}
