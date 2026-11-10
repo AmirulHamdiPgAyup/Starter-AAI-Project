@@ -4,7 +4,12 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireRole } from "@/lib/auth";
 import { prisma } from "@/lib/db";
-import { allowedActions, checkLeaveFields, type LeaveAction } from "@/lib/leave";
+import {
+  allowedActions,
+  checkLeaveFields,
+  isRemarkMissing,
+  type LeaveAction,
+} from "@/lib/leave";
 import type { ActionResult } from "./actions";
 
 // Server actions for the Leave Request module (design §14, §15).
@@ -90,4 +95,51 @@ export async function sendToHr(_prev: ActionResult, formData: FormData): Promise
   // success pop-up — see design §11.
   revalidatePath("/employee");
   redirect("/employee?sent=1");
+}
+
+// Supervisor home (Task 11): sign a waiting request. It becomes Ready to
+// Send for the employee. Design §10.2 permission table.
+export async function signLeave(_prev: ActionResult, formData: FormData): Promise<ActionResult> {
+  const user = await requireRole("SUPERVISOR");
+  const target = await loadActionableRequest(user.id, user.role, formData, "sign");
+  if (!target) return { error: "This request is not waiting for your sign-off." };
+
+  await prisma.leaveRequest.update({
+    where: { id: target.id },
+    data: { status: "READY_TO_SEND" },
+  });
+
+  revalidatePath("/supervisor");
+  revalidatePath("/employee");
+  redirect("/supervisor?signed=1");
+}
+
+// Supervisor home (Task 11): reject a waiting request. The remark is
+// mandatory (design §10.5) and saved as supervisorRemark.
+export async function rejectBySupervisor(
+  _prev: ActionResult,
+  formData: FormData,
+): Promise<ActionResult> {
+  const user = await requireRole("SUPERVISOR");
+  const target = await loadActionableRequest(
+    user.id,
+    user.role,
+    formData,
+    "rejectAsSupervisor",
+  );
+  if (!target) return { error: "This request is not waiting for your decision." };
+
+  const remark = String(formData.get("remark") ?? "");
+  if (isRemarkMissing(remark)) {
+    return { error: "Write a remark so the employee knows why." };
+  }
+
+  await prisma.leaveRequest.update({
+    where: { id: target.id },
+    data: { status: "REJECTED", supervisorRemark: remark.trim() },
+  });
+
+  revalidatePath("/supervisor");
+  revalidatePath("/employee");
+  redirect("/supervisor?rejected=1");
 }
