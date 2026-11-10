@@ -21,6 +21,7 @@ export default async function SignupPage() {
     select: { division: true },
   });
   const divisions = rows.map((r) => r.division);
+  const sitekey = process.env.HCAPTCHA_SITEKEY ?? "";
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-slate-50 px-4 py-10">
@@ -37,7 +38,7 @@ export default async function SignupPage() {
           </div>
 
           <div className="mt-8">
-            <SignupForm divisions={divisions} />
+            <SignupForm divisions={divisions} sitekey={sitekey} />
           </div>
         </div>
         <p className="mt-4 text-center text-sm text-slate-500">

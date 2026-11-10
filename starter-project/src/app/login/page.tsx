@@ -10,6 +10,10 @@ export default async function LoginPage() {
   const user = await getCurrentUser();
   if (user && isRole(user.role)) redirect(roleHome(user.role));
 
+  // The sitekey is public (it identifies the site to hCaptcha); the secret
+  // stays on the server (src/lib/captcha.ts). Design §12c.
+  const sitekey = process.env.HCAPTCHA_SITEKEY ?? "";
+
   return (
     <div className="flex min-h-screen items-center justify-center bg-slate-50 px-4">
       <div className="w-full max-w-sm">
@@ -25,7 +29,7 @@ export default async function LoginPage() {
           </div>
 
           <div className="mt-8">
-            <LoginForm />
+            <LoginForm sitekey={sitekey} />
           </div>
         </div>
         <p className="mt-4 text-center text-sm text-slate-500">

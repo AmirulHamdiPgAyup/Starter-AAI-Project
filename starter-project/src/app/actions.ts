@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/db";
 import { startSession, endSession, roleHome } from "@/lib/auth";
+import { verifyHCaptcha } from "@/lib/captcha";
 import type { Role } from "@/lib/constants";
 
 // Server actions: functions that run on the server when a button is pressed.
@@ -12,10 +13,22 @@ import type { Role } from "@/lib/constants";
 
 export type ActionResult = { error?: string; ok?: boolean; message?: string };
 
+// Design §12c: the human check runs BEFORE any credential is looked at, and
+// fails closed — anything but an explicit "success" from hCaptcha refuses
+// the request (missing token, bad token, unreachable service).
+const CAPTCHA_ERROR = "Please complete the CAPTCHA challenge.";
+
 export async function loginAction(
   _prev: ActionResult,
   formData: FormData,
 ): Promise<ActionResult> {
+  const captchaOk = await verifyHCaptcha(
+    String(formData.get("h-captcha-response") ?? ""),
+  );
+  if (!captchaOk) {
+    return { error: CAPTCHA_ERROR };
+  }
+
   const email = String(formData.get("email") ?? "").trim().toLowerCase();
   const password = String(formData.get("password") ?? "");
 
@@ -50,6 +63,13 @@ export async function signupAction(
   _prev: ActionResult,
   formData: FormData,
 ): Promise<ActionResult> {
+  const captchaOk = await verifyHCaptcha(
+    String(formData.get("h-captcha-response") ?? ""),
+  );
+  if (!captchaOk) {
+    return { error: CAPTCHA_ERROR };
+  }
+
   const name = String(formData.get("name") ?? "").trim();
   const email = String(formData.get("email") ?? "").trim().toLowerCase();
   const password = String(formData.get("password") ?? "");

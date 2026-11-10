@@ -62,6 +62,9 @@ Run `npm run db:seed` first to start from clean data.
 | [ ] | AC-07 | A user cannot open another role's pages. | As `employee-1`, type `/hr` or `/admin` → you are sent back to `/employee`. As `admin`, type `/employee` → you are sent back to `/admin`. |
 | [ ] | AC-08 | Every page shows who is logged in. | The top bar shows the user's name and role. On a phone, it shows the user's initials instead. |
 | [ ] | AC-09 | An unknown page shows "Not found". | Type `/something-else` → "Not found", with a button back to your home page. |
+| [ ] | AC-27 | Login must pass the CAPTCHA. | Open `/login`: the hCaptcha box is visible under the password. Sign in as `employee-1` with the right password → succeeds **only when a valid CAPTCHA token accompanies the form** (the server verifies the token with hCaptcha before checking the password). |
+| [ ] | AC-28 | Sign-up must pass the CAPTCHA. | Open `/signup`: the hCaptcha box is visible. A new account is created **only when** the form carries a valid token. |
+| [ ] | AC-29 | The check cannot be skipped. | With correct credentials but a **missing or nonsense** token, the server replies "Please complete the CAPTCHA challenge." and nothing happens. If hCaptcha's servers cannot be reached, the request is also refused (**fail closed**) — never allowed through. |
 ## 5. Not included (for now)
 
 These are **out of scope** for the login:
@@ -159,6 +162,11 @@ stories for this module.
   work email, password (at least **8 characters**) and a **division from the
   list** — so that I can start using the system without waiting for someone
   else to create my account.
+- **U14. Human check** *(Core, added later)*. As Budiman, I want **every
+  login and sign-up to carry a CAPTCHA token that the server verifies with
+  hCaptcha before anything else happens** — missing, wrong or unverifiable
+  tokens are refused (fail closed) — so that scripts cannot hammer the forms
+  to guess passwords or mass-create accounts.
 
 ## 9. Acceptance checklist
 

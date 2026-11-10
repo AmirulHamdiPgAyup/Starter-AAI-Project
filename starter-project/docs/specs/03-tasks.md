@@ -211,3 +211,21 @@ has to work before anything else.
   `ConfirmDialog`, `SuccessModal`.
 - **Check:** AC-24, AC-25, AC-26; `npm run lint` and `npm run build` pass;
   README mentions the sign-up page.
+
+## Task 17 – hCaptcha human check *(Core, added after the first build)*
+
+- **Goal:** Every login and sign-up must carry a CAPTCHA token that the
+  **server** verifies with hCaptcha before credentials are touched
+  (design §12c). Missing, wrong or unverifiable tokens (including an
+  unreachable verification service) are refused — **fail closed**. The
+  widget lives inside each form so its `h-captcha-response` token rides
+  along with the submission; the widget resets after every server error
+  because tokens are single-use.
+- **Files:** `src/lib/captcha.ts` (`verifyHCaptcha`, new),
+  `src/components/HCaptcha.tsx` (new), `LoginForm.tsx`, `SignupForm.tsx`,
+  the login and sign-up pages (pass the sitekey), `src/app/actions.ts`
+  (verify first in `loginAction` and `signupAction`), `.env.example`
+  (`HCAPTCHA_SITEKEY`, `HCAPTCHA_SECRET` — test keypair; `.env` stays
+  uncommitted).
+- **Check:** AC-27, AC-28, AC-29; `npm run lint` and `npm run build` pass;
+  README explains the keys and how to force a real visual challenge.

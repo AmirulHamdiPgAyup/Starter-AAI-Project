@@ -6,16 +6,30 @@ import { signupAction } from "@/app/actions";
 import { Button } from "./ui/Button";
 import { ConfirmDialog } from "./ui/ConfirmDialog";
 import { ErrorMessage, HelpText, Label, fieldClass } from "./ui/Field";
+import { HCaptcha } from "./HCaptcha";
 
 // Sign-up (design §12b). Creating an account asks for confirmation first.
 // On success the action signs the new person in and redirects to
 // /employee?joined=1, where the page itself shows the success pop-up
 // (design §11) — the screen changes, so it uses the page-level modal.
-export function SignupForm({ divisions }: { divisions: string[] }) {
+export function SignupForm({
+  divisions,
+  sitekey,
+}: {
+  divisions: string[];
+  sitekey: string;
+}) {
   const [state, formAction, pending] = useActionState(signupAction, {});
   const [confirming, setConfirming] = useState(false);
   const [toSend, setToSend] = useState<FormData | null>(null);
   const [, startTransition] = useTransition();
+
+  // CAPTCHA tokens are single-use: every submission replaces the widget
+  // with a fresh one. The FormData is snapshotted inside the submit
+  // handler, before this state update renders, so the attempt being
+  // verified keeps its token and the next attempt starts with a new one
+  // (§12c).
+  const [attempt, setAttempt] = useState(0);
 
   return (
     <form
@@ -23,9 +37,10 @@ export function SignupForm({ divisions }: { divisions: string[] }) {
       onSubmit={(e) => {
         e.preventDefault();
         // Empty/short fields are stopped by the browser (required/minLength);
-        // the server checks everything again.
+        // the server checks everything again, starting with the CAPTCHA.
         if (pending || confirming) return;
         setToSend(new FormData(e.currentTarget));
+        setAttempt((n) => n + 1);
         setConfirming(true);
       }}
     >
@@ -82,6 +97,8 @@ export function SignupForm({ divisions }: { divisions: string[] }) {
           ))}
         </select>
       </div>
+
+      <HCaptcha sitekey={sitekey} resetKey={attempt} />
 
       <div className="flex items-center justify-between gap-3">
         <Button type="submit" disabled={pending || confirming}>

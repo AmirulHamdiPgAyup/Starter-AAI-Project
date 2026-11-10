@@ -80,8 +80,8 @@ another role sends you back to your own home page.
 | Route | Who | What it shows |
 |-------|-----|---------------|
 | `/` | anyone | Sends you to your home page, or to `/login`. |
-| `/login` | anyone | Email and password form, with a **Sign up** link to `/signup`. A logged-in user is sent to their home page. |
-| `/signup` | logged-out visitor | The sign-up form (§12b). A logged-in user is sent to their home page. |
+| `/login` | anyone | Email and password form with the **CAPTCHA box** (§12c) and a **Sign up** link to `/signup`. A logged-in user is sent to their home page. |
+| `/signup` | logged-out visitor | The sign-up form (§12b) with the **CAPTCHA box** (§12c). A logged-in user is sent to their home page. |
 | `/employee` | Employee | A page with only a short hint ("This page is empty. Continue here with your own project…") until Session 2. |
 | `/supervisor` | Supervisor | A page with only a short hint ("This page is empty. Continue here with your own project…") until Session 2. |
 | `/hr` | HR | A page with only a short hint ("This page is empty. Continue here with your own project…") until Session 2. |
@@ -108,7 +108,9 @@ red above the form.
 | `src/lib/constants.ts` | Roles, divisions, designations, time zone, date helpers. |
 | `src/lib/auth.ts` | Login cookie, `getCurrentUser()`, `requireRole()`, `roleHome()`. |
 | `src/lib/db.ts` | The single database connection. |
-| `src/app/actions.ts` | Server actions: `loginAction`, `logoutAction`, `signupAction`. |
+| `src/app/actions.ts` | Server actions: `loginAction`, `logoutAction`, `signupAction`. The first thing both credential actions do is verify the CAPTCHA token (§12c). |
+| `src/lib/captcha.ts` *(new)* | `verifyHCaptcha(token)` — one POST to `https://api.hcaptcha.com/siteverify` with `HCAPTCHA_SECRET`; returns false on any failure (fail closed). |
+| `src/components/HCaptcha.tsx` *(new)* | Client wrapper that loads the hCaptcha script and renders the widget inside the form; re-issued after every server error (tokens are single-use). |
 | `src/app/login/` | The login page. |
 | `src/app/signup/` | The sign-up page (§12b). |
 | `src/app/<role>/` | One folder per role's screens (pages with only a hint for now). |
@@ -143,6 +145,10 @@ build can be tested with more than one person per role.
 - Sign-up creates **Employees only**: the role is set by the server, never
   read from the form, and the password (min. 8 characters) is validated
   server-side as well as in the browser.
+- Every login and sign-up carries a CAPTCHA token that the **server**
+  verifies with hCaptcha before credentials are looked at; a missing,
+  invalid or unverifiable token (including an unreachable verification
+  service) is refused — see §12c.
 
 ## 8. Commands
 
@@ -303,6 +309,43 @@ Built from `src/components/ui/Field`, like the login and apply forms:
   the success pop-up is the **page-level** one (design §11): the employee
   page opens its `SuccessModal` from the flag. The page links back to
   `/login`.
+
+## 12c. The CAPTCHA box (login and sign-up)
+
+Both credential forms carry an **hCaptcha** widget below the last input,
+inside the `<form>`, so the hidden token field travels with the submission:
+
+- The widget is rendered by `src/components/HCaptcha.tsx`: a client component
+  that loads `https://js.hcaptcha.com/1/api.js?render=explicit` once and
+  renders the box into its own div. hCaptcha injects a hidden
+  `h-captcha-response` textarea into that div — because the div sits inside
+  the form, the token rides along in `FormData` automatically.
+- **The server does the checking.** Before touching the database,
+  `loginAction` and `signupAction` call `verifyHCaptcha(token)`
+  (`src/lib/captcha.ts`), which POSTs `{ secret, response }` to
+  `https://api.hcaptcha.com/siteverify`. The reply must say `success: true`
+  or the action returns "Please complete the CAPTCHA challenge." — the
+  password is never compared and no account is created.
+- **Fail closed.** A missing token, an unset secret, a network failure or a
+  broken reply all count as *not verified*: the request is refused, never
+  waved through.
+- **Tokens are single-use.** After every server error (and after expiry) the
+  form resets the widget so the user gets a fresh token for the next
+  attempt.
+
+Keys come from `.env` and are **never committed**:
+
+| Variable | Used by | What it is |
+| --- | --- | --- |
+| `HCAPTCHA_SITEKEY` | the browser widget (passed as a prop by the login/sign-up pages) | public site key |
+| `HCAPTCHA_SECRET` | `src/lib/captcha.ts` only (server) | secret key; never sent to the browser |
+
+`.env.example` ships hCaptcha's **official test keypair**, which always
+passes without showing a puzzle — the workshop flow stays frictionless while
+the *verification path* (token required, server-checked, fail closed) is the
+real one. To force a genuine visual challenge on every submission, create a
+free account at hcaptcha.com, set the site key's mode to **Always Challenge**,
+and put those two keys in `.env` — **no code change is needed**.
 
 ## 13. Table columns per screen
 
