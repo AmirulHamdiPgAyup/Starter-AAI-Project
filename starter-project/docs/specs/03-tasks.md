@@ -81,3 +81,115 @@ has to work before anything else.
   checklist as each role. Make sure `README.md` explains how to install, run
   and test.
 - **Check:** Every AC box ticked; `npm run lint` and `npm run build` pass.
+
+---
+
+# Leave Request – Tasks
+
+> Same rules as above: build **one task at a time**, in order. After each:
+> the AI builds it → the checks are run → **you check it in the browser**.
+> If a check fails, fix the spec first (requirements §6–10 or design §9–16),
+> then rebuild. All tasks are **Core** — this module has no Stretch.
+
+| # | Task | Core / Stretch | Checks (from requirements §9) |
+|---|------|----------------|-------------------------------|
+| 7 | Leave data: table, lists, sample requests | Core | – |
+| 8 | Working-days & rules helper | Core | – (proved by Tasks 9–13) |
+| 9 | The apply form | Core | AC-10, AC-11, AC-12, AC-13 |
+| 10 | Employee home: action + history, Send to HR | Core | AC-17 |
+| 11 | Supervisor: Sign / Reject | Core | AC-14, AC-15, AC-16 |
+| 12 | HR: shared queue, Approve / Reject | Core | AC-18, AC-19, AC-20 |
+| 13 | Employee: Edit & resubmit | Core | AC-21 |
+| 14 | Admin: read-only overview | Core | AC-22 |
+| 15 | Final check and README | Core | All, incl. AC-23 |
+
+## Task 7 – Leave data: table, lists, sample requests *(Core)*
+
+- **Goal:** The `LeaveRequest` table from design §9 exists, the leave-type
+  and status lists are in `constants.ts`, and `npm run db:seed` creates the
+  six sample requests from design §16 alongside the 7 users.
+- **Files:** `prisma/schema.prisma`, a new folder under
+  `prisma/migrations/`, `src/lib/constants.ts`, `prisma/seed.ts`.
+- **Check:** `npm run db:migrate` succeeds; `npm run db:seed` prints the
+  users and sample requests; `npm run db:studio` shows one request per
+  status, both divisions. The app still starts and login still works.
+
+## Task 8 – Working-days & rules helper *(Core)*
+
+- **Goal:** `src/lib/leave.ts` holds: the working-day count (weekends
+  excluded, per design rule §10.2), the form validation, and one function
+  answering "what may this user do to this request right now" (design §10.4).
+- **Files:** `src/lib/leave.ts` (+ additions to `src/lib/constants.ts`).
+- **Check:** `npm run lint` passes. The counts for the AC-13 dates
+  (Mon–Fri = 5, Fri–Mon = 2, Sat–Sun = 0 refused) are proved in the browser
+  at Task 9; nothing else changes yet.
+
+## Task 9 – The apply form *(Core)*
+
+- **Goal:** `/employee/new` with the form from design §12: type dropdown,
+  dates with a live working-days count, division-filtered supervisor
+  dropdown, optional reason; **Submit** → confirm → success → back to
+  `/employee`. Server action `createLeaveRequest` re-checks everything.
+- **Files:** `src/app/employee/new/page.tsx`,
+  `src/components/leave/LeaveForm.tsx`, `src/app/leave-actions.ts`,
+  `src/components/ui/` (reused, not copied).
+- **Check:** AC-10, AC-11, AC-12, AC-13.
+
+## Task 10 – Employee home: action + history, Send to HR *(Core)*
+
+- **Goal:** `/employee` shows **Needs your action** (*Ready to Send* with
+  **Send to HR**, *Rejected* with an *Edit & resubmit* placeholder until
+  Task 13) and **History** (all own requests, newest first, columns from
+  design §13). Top bar gets **New leave request**. `sendToHr` server action.
+- **Files:** `src/app/employee/page.tsx`,
+  `src/components/leave/RequestTable.tsx`, `RequestActions.tsx`,
+  `src/app/leave-actions.ts`.
+- **Check:** AC-17 (and AC-10's "appears in history" part still holds).
+
+## Task 11 – Supervisor: Sign / Reject *(Core)*
+
+- **Goal:** `/supervisor` with **Needs your action** = own
+  *Waiting for Supervisor* requests; **Sign** and **Reject** (remark
+  required, in the dialog) with confirm + success; **History** below.
+  Server actions `signLeave`, `rejectBySupervisor` re-check assignment and
+  status.
+- **Files:** `src/app/supervisor/page.tsx`,
+  `src/components/leave/DecisionDialog.tsx`, `RequestActions.tsx`,
+  `src/app/leave-actions.ts`.
+- **Check:** AC-14, AC-15, AC-16.
+
+## Task 12 – HR: shared queue, Approve / Reject *(Core)*
+
+- **Goal:** `/hr` with the shared **Needs your action** queue (all
+  *Waiting for HR*), **Approve** and **Reject** (remark required) with
+  confirm + success, the deciding officer recorded from the session;
+  **History** shows decided requests with *Decided by*.
+- **Files:** `src/app/hr/page.tsx`, `src/app/leave-actions.ts`
+  (`approveLeave`, `rejectByHr`), reuse `DecisionDialog` / `RequestTable`.
+- **Check:** AC-18, AC-19, AC-20.
+
+## Task 13 – Employee: Edit & resubmit *(Core)*
+
+- **Goal:** The request view `/employee/requests/[id]`; when *Rejected*,
+  the prefilled form from Task 9 reopens, remarks are cleared,
+  working-days re-counted, status back to *Waiting for Supervisor*.
+  Server action `resubmitLeave`.
+- **Files:** `src/app/employee/requests/[id]/page.tsx` (+ edit),
+  `src/app/leave-actions.ts`, reuse `LeaveForm`.
+- **Check:** AC-21.
+
+## Task 14 – Admin: read-only overview *(Core)*
+
+- **Goal:** `/admin` lists every request with the columns from design §13
+  (including Remarks and Decided by) and **no action buttons**.
+- **Files:** `src/app/admin/page.tsx`, reuse `RequestTable`.
+- **Check:** AC-22.
+
+## Task 15 – Final check and README *(Core)*
+
+- **Goal:** `npm run db:seed`, then walk the whole §9 checklist as each
+  role, including the negative checks (AC-11, AC-20, AC-23); confirm the
+  login checks (§4) still pass; update `README.md` (new screens, sample
+  requests).
+- **Check:** Every AC-10…AC-23 box ticked, every old AC still ticked;
+  `npm run lint` and `npm run build` pass.

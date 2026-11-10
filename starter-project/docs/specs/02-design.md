@@ -149,3 +149,177 @@ build can be tested with more than one person per role.
 | `npm run db:studio` | Open a browser view of the database |
 | `npm run lint` | Check the code for common mistakes |
 | `npm run build` | Check the whole app compiles |
+
+---
+
+# Leave Request – Design
+
+> **How the module is built.** Follows
+> [01-requirements.md](01-requirements.md) sections 6–10; if the two
+> disagree, fix the requirements first, then this file.
+>
+> - **Part A – Data design** (sections 9–10): **you own and review this.**
+> - **Part B – App design** (sections 11–15): the AI drafts it; you check it.
+
+---
+
+# Part A – Data design for the Leave Request (you review)
+
+## 9. Tables
+
+One new table. The `User` table (§1) stays as it is. Every row gets a
+number (`id`) automatically.
+
+### `LeaveRequest` – one row = one leave request by one employee
+
+| Field | Type | Required? | What it holds |
+|-------|------|-----------|---------------|
+| `id` | number | auto | Unique number for the request |
+| `employeeId` | number | yes | Who applied (link to `User`) |
+| `supervisorId` | number | yes | The chosen supervisor (link to `User`); must be in the employee's own division |
+| `leaveType` | text | yes | `ANNUAL`, `SICK`, `URGENT` or `UNPAID` |
+| `startDate` | date | yes | First day of leave |
+| `endDate` | date | yes | Last day of leave; never before `startDate` |
+| `workingDays` | number | yes | Count of days from start to end **excluding Saturdays and Sundays**, counted when the request is submitted and re-counted when it is resubmitted. At least 1 |
+| `reason` | text | no | The employee's own explanation, free text |
+| `status` | text | yes | `WAITING_SUPERVISOR`, `READY_TO_SEND`, `WAITING_HR`, `APPROVED` or `REJECTED` |
+| `supervisorRemark` | text | no | What the supervisor wrote when rejecting. Empty when they sign |
+| `hrRemark` | text | no | What the HR officer wrote when rejecting. Empty when they approve |
+| `hrDecidedById` | number | no | The HR officer who approved or rejected (null until HR decides) |
+| `createdAt` | date + time | auto | When the request was created |
+| `updatedAt` | date + time | auto | Last change; lists sort by this, newest first |
+
+> **Why plain text again?** Like roles, `leaveType` and `status` are fixed
+> lists kept in `src/lib/constants.ts`; SQLite has no enums and the app
+> checks the values.
+
+## 10. Business rules for leave requests
+
+1. **Valid values.** `leaveType` and `status` may only hold the values
+   listed in §9. The allowed-value lists live in `src/lib/constants.ts`.
+2. **Dates.** `endDate` is on or after `startDate`. The counted
+   `workingDays` must be at least 1 — a request that covers only a weekend
+   is refused with a clear message.
+3. **Supervisor choice.** `supervisorId` must be a user with the SUPERVISOR
+   role in the **same division** as the employee. The form only offers
+   those; the server checks it again on save.
+4. **Who may do what, and the only allowed status changes:**
+
+   | Actor | Allowed action | Only when | Sets status to |
+   |-------|----------------|-----------|----------------|
+   | Employee (owner) | Create | always | `WAITING_SUPERVISOR` |
+   | The assigned supervisor | Sign | status `WAITING_SUPERVISOR` and they are the assignee | `READY_TO_SEND` |
+   | The assigned supervisor | Reject + remark | same as Sign | `REJECTED` |
+   | Employee (owner) | Send to HR | status `READY_TO_SEND` | `WAITING_HR` |
+   | Any HR officer | Approve | status `WAITING_HR` | `APPROVED` + records themselves in `hrDecidedById` |
+   | Any HR officer | Reject + remark | status `WAITING_HR` | `REJECTED` + records themselves in `hrDecidedById` |
+   | Employee (owner) | Edit & resubmit | status `REJECTED` | `WAITING_SUPERVISOR` |
+   | Admin | nothing (read-only) | – | – |
+
+   No other change is possible, and only these actors may make it — the
+   server re-checks role, ownership and current status on every action.
+5. **Remarks.** A rejection (by supervisor or HR) always carries a
+   non-empty remark. Sign and approve do not use remarks. On
+   **edit & resubmit**, `supervisorRemark`, `hrRemark` and `hrDecidedById`
+   are cleared, so a request never shows a stale remark from a previous
+   round.
+6. **Edit & resubmit fields.** The employee may change leave type, dates,
+   supervisor and reason; `workingDays` is re-counted and the status goes
+   back to `WAITING_SUPERVISOR`. Approved requests can never be edited.
+7. **Nothing is deleted.** Approved and Rejected requests stay in the
+   database and in the history lists forever (within this app).
+
+---
+
+# Part B – App design for the Leave Request (AI drafts, you check)
+
+## 11. Screens (routes)
+
+The login routes (§4) stay. The four role home pages get real content, and
+the employee gets two new screens. The top bar and the "opening another
+role's page sends you home" rule are unchanged.
+
+| Route | Who | What it shows |
+|-------|-----|---------------|
+| `/employee` | Employee | **Needs your action**: *Ready to Send* (button **Send to HR**) and *Rejected* (button **Edit & resubmit**). Below, **History**: every own request, newest first. Top-right button **New leave request**. |
+| `/employee/new` | Employee | The apply form (see §12). |
+| `/employee/requests/[id]` | Employee (owner) | View one own request; when *Rejected*, an **Edit & resubmit** button opens the same form, prefilled. |
+| `/supervisor` | Supervisor | **Needs your action**: own requests with status *Waiting for Supervisor*; buttons **Sign** / **Reject**. Below, **History**: all requests ever sent to them, newest first. |
+| `/hr` | HR | **Needs your action**: the shared queue — every *Waiting for HR* request; buttons **Approve** / **Reject**. Below, **History**: every decided request, with the deciding officer shown. |
+| `/admin` | Admin | One table of every request, newest first. **No action buttons anywhere.** |
+
+Feedback on every page: each action (Submit, Sign, Reject, Send to HR,
+Approve, Edit & resubmit) opens a **confirmation box first** (the existing
+`ConfirmDialog`) and shows a **success message** after (the existing
+`SuccessModal`). Errors show in red above the form or inside the dialog.
+Empty action lists show an `EmptyState` ("Nothing needs your action").
+
+## 12. The apply / edit form
+
+One form used by `/employee/new` and by the edit screen, built from
+`src/components/ui/Field`:
+
+- **Leave type** – dropdown of Annual, Sick, Urgent, Unpaid.
+- **Start date** and **End date** – date pickers; end before start shows a
+  red error, weekend-only range says "These dates contain no working days".
+- **Working days** – a read-only count shown under the dates, updated as
+  the dates change (server recomputes and checks on save).
+- **Supervisor** – dropdown listing only SUPERVISOR users of the
+  employee's own division.
+- **Reason** – optional text area.
+- **Submit** – confirmation box → save → success message → back to
+  `/employee`.
+
+## 13. Table columns per screen
+
+| Screen | Columns |
+|--------|---------|
+| Employee (action & history) | Submitted on, Type, Dates (start–end), Days, Status, Remarks |
+| Supervisor action list | Employee, Designation, Dates, Days, Type, Reason |
+| Supervisor history | the above + Your decision (signed/rejected) |
+| HR queue | Employee, Division, Dates, Days, Type, Reason |
+| HR history | the above + Status, Decided by, Remarks |
+| Admin | Employee, Division, Supervisor, Type, Dates, Days, Status, Remarks, Decided by |
+
+Tables reuse the `ui/` components and scroll on small screens. Statuses are
+shown in plain words ("Waiting for Supervisor"), not raw codes.
+
+## 14. Where the code lives (new/changed files)
+
+| File | What goes in it |
+|------|-----------------|
+| `prisma/schema.prisma` + new migration | The `LeaveRequest` table (§9). |
+| `prisma/seed.ts` | Keeps the 7 users; adds sample requests (§16). |
+| `src/lib/constants.ts` | Adds `LEAVE_TYPES`, `LEAVE_STATUSES` and their display names; weekend definition (Sat, Sun). |
+| `src/lib/leave.ts` *(new)* | Counting working days, form validation, and "what may this user do to this request right now" (rules from §10 in one place). |
+| `src/app/leave-actions.ts` *(new)* | Server actions: `createLeaveRequest`, `signLeave`, `rejectBySupervisor`, `sendToHr`, `approveLeave`, `rejectByHr`, `resubmitLeave`. Every one calls `requireRole` and re-checks ownership/assignment and the current status before saving. |
+| `src/app/employee/` | Home page sections + `new/` form + `requests/[id]/` view & edit. |
+| `src/app/supervisor/`, `src/app/hr/`, `src/app/admin/` | Home pages from §11. |
+| `src/components/leave/` *(new)* | `LeaveForm`, `RequestTable`, `RequestActions`, `DecisionDialog` (remark box used by both rejects). Reuse `src/components/ui/` everywhere. |
+
+## 15. Security for the module
+
+- Every page calls `requireRole` at the top, as login pages do.
+- Every server action re-checks on the server: logged in, right role, owner
+  or assignee or HR as the rule requires, and the exact status the action
+  needs. Hiding a button is not enough.
+- `hrDecidedById` comes from the session, never from the form.
+- Rejection remarks must be non-empty **server-side**, not just in the form.
+
+## 16. Demo data (sample requests)
+
+`npm run db:seed` keeps deleting and recreating the 7 users, and adds
+sample requests so every screen has something to show — at least one
+request in **each status**, covering both divisions:
+
+| Request | Status at seed |
+|---------|----------------|
+| employee-1 → supervisor-1 | Waiting for Supervisor (Annual, a future Mon–Fri) |
+| employee-1 → supervisor-1 | Ready to Send |
+| employee-1 → supervisor-1 | Waiting for HR |
+| employee-1 → supervisor-1 | Approved (decided by HR 1) |
+| employee-2 → supervisor-2 | Waiting for Supervisor (Sick) |
+| employee-2 → supervisor-2 | Rejected by supervisor-2, with a remark |
+
+Sample data uses made-up dates and remarks only. The acceptance checks in
+requirements §9 create their own requests, so samples never clash with them.
