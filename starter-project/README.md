@@ -1,12 +1,35 @@
-# HRMS · Starter App (Login)
+# HRMS · Starter App
 
-The starter app for the **Vibe Coding 101 with Agentic AI** workshop. It is
-the beginning of Budiman Company's HR Management System: **login works for all
-four roles**, and each role lands on its own (empty) home page.
+The app built in the **Vibe Coding 101 with Agentic AI** workshop: Budiman
+Company's HR Management System. **Login works for all four roles**, and the
+**Leave Request module** (built in Session 2, the Spec-Driven Development
+way) takes each request from submission to decision.
 
-In **Session 2** you build the **Leave Request module** on top of it, the
-Spec-Driven Development way: write and review the specifications first, then
-let the AI agent build from them.
+## How a leave request moves
+
+Employee submits → **Waiting for Supervisor** → supervisor signs →
+**Ready to Send** → employee sends to HR → **Waiting for HR** → HR approves →
+**Approved**. At either decision point the request can be **rejected with a
+remark**; the employee can then **edit it and resubmit**, which puts it back
+at *Waiting for Supervisor*. Every action asks for confirmation first and
+shows a success message after. Leave types: Annual, Sick, Urgent, Unpaid;
+days are counted as **working days** (Saturday and Sunday excluded).
+
+## Screens
+
+| Screen | Route | Role |
+|--------|-------|------|
+| Log in | `/login` | everyone |
+| My leave requests — *Needs your action* + *History*, plus **New leave request** | `/employee` | Employee |
+| Request view (and **Edit & resubmit** when *Rejected*) | `/employee/requests/[id]` | Employee |
+| Supervisor queue — **Sign** / **Reject** (remark required) + history | `/supervisor` | Supervisor |
+| HR shared queue — **Approve** / **Reject** (remark required) + history with *Decided by* | `/hr` | HR |
+| Read-only overview of every request | `/admin` | Admin |
+
+Each role's home page shows a **Needs your action** section on top and a
+**history** table below, newest first. Server pages and actions re-check the
+user's role, ownership and the request's status on every request — the
+buttons a screen shows are never the only gate.
 
 ## What's already here
 
@@ -14,11 +37,13 @@ let the AI agent build from them.
   session cookie.
 - **Four roles** – Employee, Supervisor, HR and Admin – each with its own home
   page. Nobody can open another role's pages.
-- **The app frame**: a top bar with the app name, who is logged in and **Log out**, in the Budiman HRMS style. The role home pages show only a short hint.
+- **The Leave Request module**: apply, track, supervisor signing, the shared
+  HR queue, edit & resubmit, and the admin overview.
+- **The app frame**: a top bar with the app name, who is logged in and **Log out**, in the Budiman HRMS style.
 - **Building blocks** in `src/components/ui/` (Button, Card, PageHeader,
-  dialogs, form fields…) to reuse when you build the module.
-- **The login spec** in `docs/specs/` – a worked example of the three spec
-  files you will write for the Leave Request module.
+  dialogs, form fields…) and leave components in `src/components/leave/`.
+- **The specs** in `docs/specs/` – the login example plus the Leave Request
+  requirements, design and task files this app was built from.
 
 ## The project
 
@@ -42,7 +67,7 @@ You need **Node.js 20.9 or newer** (check with `node --version`) and Git.
 npm install            # 1. install dependencies (needs internet)
 cp .env.example .env   # 2. create your settings file (Windows: copy .env.example .env)
 npm run db:migrate     # 3. create the SQLite database from prisma/migrations
-npm run db:seed        # 4. add the demo users
+npm run db:seed        # 4. add the demo users and sample leave requests
 npm run dev            # 5. start the app at http://localhost:3000
 ```
 
@@ -70,6 +95,20 @@ All demo users share the password `password123`.
 | `hr-1@budiman.com`         | HR | `/hr` |
 | `hr-2@budiman.com`         | HR | `/hr` |
 | `admin@budiman.com`        | Admin | `/admin` |
+
+## Sample leave requests
+
+`npm run db:seed` also creates six made-up requests so every screen has
+something to show:
+
+| Employee | Type | Dates (2026) | Status |
+|----------|------|--------------|--------|
+| employee-1 | Annual | 16–20 Nov | *Waiting for Supervisor* |
+| employee-1 | Unpaid | 23–25 Nov | *Ready to Send* |
+| employee-1 | Urgent | 30 Nov – 1 Dec | *Waiting for HR* |
+| employee-1 | Annual | 7–11 Dec | *Approved* (by HR 1) |
+| employee-2 | Sick | 17–18 Nov | *Waiting for Supervisor* |
+| employee-2 | Urgent | 25–27 Nov | *Rejected* (with a supervisor remark — try Edit & resubmit) |
 
 ## Scripts
 
