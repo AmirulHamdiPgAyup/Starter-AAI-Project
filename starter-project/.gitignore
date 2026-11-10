@@ -1,0 +1,13 @@
+# dependencies
+/node_modules
+
+# next.js
+/.next/
+/next-env.d.ts
+
+# local database
+/prisma/dev.db
+
+# env files (keep the example)
+.env
+.env.local
