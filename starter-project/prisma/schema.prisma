@@ -1,8 +1,7 @@
 // Prisma schema for the Budiman HRMS starter app.
-// Only the User table exists so far. You add the leave request table in
-// Session 2, from the data design you write in docs/specs/.
-// Roles are stored as a String because the SQLite connector does not support
-// Prisma `enum`. The valid values are in src/lib/constants.ts.
+// Roles, leave types and statuses are stored as String because the SQLite
+// connector does not support Prisma `enum`. The valid values are in
+// src/lib/constants.ts. Tables and rules: docs/specs/02-design.md §9.
 
 datasource db {
   provider = "sqlite"
@@ -14,13 +13,39 @@ generator client {
 }
 
 model User {
+  id                 Int      @id @default(autoincrement())
+  email              String   @unique
+  name               String
+  passwordHash       String
+  role               String // EMPLOYEE | SUPERVISOR | HR | ADMIN
+  identificationNo   String
+  designation        String
+  division           String
+  createdAt          DateTime @default(now())
+
+  submittedRequests  LeaveRequest[] @relation("LeaveEmployee")
+  supervisedRequests LeaveRequest[] @relation("LeaveSupervisor")
+  hrDecisions        LeaveRequest[] @relation("LeaveHrDecision")
+}
+
+// One row = one leave request by one employee (docs/specs/02-design.md §9).
+model LeaveRequest {
   id               Int      @id @default(autoincrement())
-  email            String   @unique
-  name             String
-  passwordHash     String
-  role             String // EMPLOYEE | SUPERVISOR | HR | ADMIN
-  identificationNo String
-  designation      String
-  division         String
+  employeeId       Int
+  supervisorId     Int
+  leaveType        String // ANNUAL | SICK | URGENT | UNPAID
+  startDate        DateTime
+  endDate          DateTime
+  workingDays      Int // start..end excluding weekends; at least 1 (rule §10.2)
+  reason           String? // optional employee explanation
+  status           String // WAITING_SUPERVISOR | READY_TO_SEND | WAITING_HR | APPROVED | REJECTED
+  supervisorRemark String? // required when the supervisor rejects
+  hrRemark         String? // required when HR rejects
+  hrDecidedById    Int? // the HR officer who approved/rejected
   createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  employee    User  @relation("LeaveEmployee", fields: [employeeId], references: [id])
+  supervisor  User  @relation("LeaveSupervisor", fields: [supervisorId], references: [id])
+  hrDecidedBy User? @relation("LeaveHrDecision", fields: [hrDecidedById], references: [id])
 }

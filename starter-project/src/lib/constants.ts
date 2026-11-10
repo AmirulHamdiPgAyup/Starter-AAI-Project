@@ -1,6 +1,5 @@
 // Shared constants and helpers for the Budiman HRMS starter app.
-// Roles are a plain string union (SQLite has no enums).
-// The Leave Request module adds its own constants here in Session 2.
+// Roles, leave types and statuses are plain string unions (SQLite has no enums).
 
 export const ROLES = ["EMPLOYEE", "SUPERVISOR", "HR", "ADMIN"] as const;
 export type Role = (typeof ROLES)[number];
@@ -44,6 +43,43 @@ export const DESIGNATIONS = [
 
 export function isRole(value: string): value is Role {
   return (ROLES as readonly string[]).includes(value);
+}
+
+// Leave types and request statuses, stored as plain text on the request
+// (docs/specs/02-design.md §9–10).
+export const LEAVE_TYPES = ["ANNUAL", "SICK", "URGENT", "UNPAID"] as const;
+export type LeaveType = (typeof LEAVE_TYPES)[number];
+
+export const LEAVE_TYPE_LABELS: Record<LeaveType, string> = {
+  ANNUAL: "Annual",
+  SICK: "Sick",
+  URGENT: "Urgent",
+  UNPAID: "Unpaid",
+};
+
+export const LEAVE_STATUSES = [
+  "WAITING_SUPERVISOR",
+  "READY_TO_SEND",
+  "WAITING_HR",
+  "APPROVED",
+  "REJECTED",
+] as const;
+export type LeaveStatus = (typeof LEAVE_STATUSES)[number];
+
+export const LEAVE_STATUS_LABELS: Record<LeaveStatus, string> = {
+  WAITING_SUPERVISOR: "Waiting for Supervisor",
+  READY_TO_SEND: "Ready to Send",
+  WAITING_HR: "Waiting for HR",
+  APPROVED: "Approved",
+  REJECTED: "Rejected",
+};
+
+export function isLeaveType(value: string): value is LeaveType {
+  return (LEAVE_TYPES as readonly string[]).includes(value);
+}
+
+export function isLeaveStatus(value: string): value is LeaveStatus {
+  return (LEAVE_STATUSES as readonly string[]).includes(value);
 }
 
 // The company's time zone. It decides what "today" is and how dates are shown.
