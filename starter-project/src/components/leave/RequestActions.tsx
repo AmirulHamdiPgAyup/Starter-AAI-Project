@@ -3,6 +3,8 @@
 import { useState, useTransition } from "react";
 import { useActionState } from "react";
 import {
+  approveLeave,
+  rejectByHr,
   rejectBySupervisor,
   sendToHr,
   signLeave,
@@ -21,19 +23,33 @@ export function RequestActions({
   canResubmit = false,
   canSign = false,
   canRejectAsSupervisor = false,
+  canApprove = false,
+  canRejectAsHr = false,
 }: {
   requestId: number;
   canSendToHr?: boolean;
   canResubmit?: boolean;
   canSign?: boolean;
   canRejectAsSupervisor?: boolean;
+  canApprove?: boolean;
+  canRejectAsHr?: boolean;
 }) {
   const [state, action, pending] = useActionState(sendToHr, {});
   const [confirming, setConfirming] = useState(false);
-  const [decision, setDecision] = useState<null | "sign" | "reject">(null);
+  const [decision, setDecision] = useState<
+    null | "sign" | "reject" | "approve" | "rejectAsHr"
+  >(null);
   const [, startTransition] = useTransition();
 
-  if (!canSendToHr && !canResubmit && !canSign && !canRejectAsSupervisor) return null;
+  if (
+    !canSendToHr &&
+    !canResubmit &&
+    !canSign &&
+    !canRejectAsSupervisor &&
+    !canApprove &&
+    !canRejectAsHr
+  )
+    return null;
 
   return (
     <div className="space-y-2">
@@ -56,6 +72,16 @@ export function RequestActions({
         ) : null}
         {canRejectAsSupervisor ? (
           <Button variant="danger" disabled={pending} onClick={() => setDecision("reject")}>
+            Reject
+          </Button>
+        ) : null}
+        {canApprove ? (
+          <Button variant="success" disabled={pending} onClick={() => setDecision("approve")}>
+            Approve
+          </Button>
+        ) : null}
+        {canRejectAsHr ? (
+          <Button variant="danger" disabled={pending} onClick={() => setDecision("rejectAsHr")}>
             Reject
           </Button>
         ) : null}
@@ -94,6 +120,27 @@ export function RequestActions({
         danger
         remark
         action={rejectBySupervisor}
+        requestId={requestId}
+        onCancel={() => setDecision(null)}
+      />
+
+      <DecisionDialog
+        open={decision === "approve"}
+        title="Approve this request?"
+        message="The employee will see it as Approved."
+        confirmLabel="Approve"
+        action={approveLeave}
+        requestId={requestId}
+        onCancel={() => setDecision(null)}
+      />
+      <DecisionDialog
+        open={decision === "rejectAsHr"}
+        title="Reject this request?"
+        message="The employee will see your remark."
+        confirmLabel="Reject"
+        danger
+        remark
+        action={rejectByHr}
         requestId={requestId}
         onCancel={() => setDecision(null)}
       />

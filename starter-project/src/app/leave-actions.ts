@@ -143,3 +143,46 @@ export async function rejectBySupervisor(
   revalidatePath("/employee");
   redirect("/supervisor?rejected=1");
 }
+
+// HR home (Task 12): approve a request waiting for HR. The deciding officer
+// comes from the session, never from the form (design §15).
+export async function approveLeave(_prev: ActionResult, formData: FormData): Promise<ActionResult> {
+  const user = await requireRole("HR");
+  const target = await loadActionableRequest(user.id, user.role, formData, "approve");
+  if (!target) return { error: "This request is no longer waiting for HR." };
+
+  await prisma.leaveRequest.update({
+    where: { id: target.id },
+    data: { status: "APPROVED", hrDecidedById: user.id },
+  });
+
+  // The row leaves the shared queue for whoever decides first (design §11).
+  revalidatePath("/hr");
+  revalidatePath("/employee");
+  redirect("/hr?approved=1");
+}
+
+// HR home (Task 12): reject a waiting request. The remark is mandatory
+// (design §10.5) and saved as hrRemark, alongside the deciding officer.
+export async function rejectByHr(
+  _prev: ActionResult,
+  formData: FormData,
+): Promise<ActionResult> {
+  const user = await requireRole("HR");
+  const target = await loadActionableRequest(user.id, user.role, formData, "rejectAsHr");
+  if (!target) return { error: "This request is no longer waiting for HR." };
+
+  const remark = String(formData.get("remark") ?? "");
+  if (isRemarkMissing(remark)) {
+    return { error: "Write a remark so the employee knows why." };
+  }
+
+  await prisma.leaveRequest.update({
+    where: { id: target.id },
+    data: { status: "REJECTED", hrRemark: remark.trim(), hrDecidedById: user.id },
+  });
+
+  revalidatePath("/hr");
+  revalidatePath("/employee");
+  redirect("/hr?rejected=1");
+}
