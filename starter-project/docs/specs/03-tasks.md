@@ -182,7 +182,9 @@ has to work before anything else.
 
 - **Goal:** `/admin` lists every request with the columns from design §13
   (including Remarks and Decided by) and **no action buttons**.
-- **Files:** `src/app/admin/page.tsx`, reuse `RequestTable`.
+- **Files:** `src/app/admin/page.tsx` — a plain server table with the
+  design §13 columns, reusing `StatusPill` and the shared table styling
+  (`RequestTable`'s columns are the employee screen's and cannot show these).
 - **Check:** AC-22.
 
 ## Task 15 – Final check and README *(Core)*
