@@ -1,9 +1,10 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import { requireRole } from "@/lib/auth";
 import { prisma } from "@/lib/db";
-import { checkLeaveFields } from "@/lib/leave";
+import { allowedActions, checkLeaveFields, type LeaveAction } from "@/lib/leave";
 import type { ActionResult } from "./actions";
 
 // Server actions for the Leave Request module (design §14, §15).
@@ -55,4 +56,38 @@ export async function createLeaveRequest(
 
   revalidatePath("/employee");
   return { ok: true, message: "Your leave request was sent to your supervisor." };
+}
+
+// Load a request the actor may perform this exact action on right now, or
+// return null. Re-checks role, ownership/assignment and status server-side
+// (design §15).
+async function loadActionableRequest(
+  userId: number,
+  userRole: string,
+  formData: FormData,
+  action: LeaveAction,
+): Promise<{ id: number } | null> {
+  const id = Number(formData.get("id"));
+  if (!Number.isInteger(id) || id <= 0) return null;
+  const request = await prisma.leaveRequest.findUnique({ where: { id } });
+  if (!request) return null;
+  const allowed = allowedActions({ id: userId, role: userRole }, request);
+  return allowed.includes(action) ? { id: request.id } : null;
+}
+
+// Employee home (Task 10): send a signed request to the shared HR queue.
+export async function sendToHr(_prev: ActionResult, formData: FormData): Promise<ActionResult> {
+  const user = await requireRole("EMPLOYEE");
+  const target = await loadActionableRequest(user.id, user.role, formData, "sendToHr");
+  if (!target) return { error: "This request cannot be sent to HR right now." };
+
+  await prisma.leaveRequest.update({
+    where: { id: target.id },
+    data: { status: "WAITING_HR" },
+  });
+
+  // The row leaves "Needs your action", so the page (not the row) shows the
+  // success pop-up — see design §11.
+  revalidatePath("/employee");
+  redirect("/employee?sent=1");
 }

@@ -4,7 +4,7 @@ import { PageHeader } from "@/components/ui/PageHeader";
 import { Card } from "@/components/ui/Card";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { buttonClasses } from "@/components/ui/Button";
-import { Link } from "next/link";
+import Link from "next/link";
 import { LeaveForm } from "@/components/leave/LeaveForm";
 
 export const metadata = { title: "New leave request · Budiman HRMS" };

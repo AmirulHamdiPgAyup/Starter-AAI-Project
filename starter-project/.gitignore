@@ -11,3 +11,6 @@
 # env files (keep the example)
 .env
 .env.local
+
+# typescript build info
+/tsconfig.tsbuildinfo

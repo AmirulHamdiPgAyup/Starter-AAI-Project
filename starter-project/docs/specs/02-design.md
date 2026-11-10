@@ -254,6 +254,14 @@ Approve, Edit & resubmit) opens a **confirmation box first** (the existing
 `SuccessModal`). Errors show in red above the form or inside the dialog.
 Empty action lists show an `EmptyState` ("Nothing needs your action").
 
+Because a successful action makes its row leave the action list, a row-level
+pop-up would unmount before it can be seen. So for queue actions (Send to HR,
+Sign, Reject, Approve) the server action redirects back to the same page with
+a flag (for example `/employee?sent=1`) and the **page itself** opens the
+`SuccessModal` from that flag; pressing Done clears the flag from the address
+bar. Form actions (Submit, Edit & resubmit) keep the row-local `SuccessModal`
+because their screen does not disappear.
+
 ## 12. The apply / edit form
 
 One form used by `/employee/new` and by the edit screen, built from
