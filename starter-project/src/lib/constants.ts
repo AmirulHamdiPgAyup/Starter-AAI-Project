@@ -82,6 +82,10 @@ export function isLeaveStatus(value: string): value is LeaveStatus {
   return (LEAVE_STATUSES as readonly string[]).includes(value);
 }
 
+// Weekend days for working-day counting (design §10.2): Saturday and Sunday,
+// as JS getDay() numbers (0 = Sunday, 6 = Saturday).
+export const WEEKEND_DAYS = [0, 6] as const;
+
 // The company's time zone. It decides what "today" is and how dates are shown.
 export const APP_TIME_ZONE = "Asia/Brunei";
 
